@@ -1,0 +1,36 @@
+---
+- hosts: server1
+  become: yes
+  vars_files:
+    - vars/main.yml
+    
+  tasks:
+  - name: Install docker-compose
+    apt:
+      name: docker-compose
+      state: present
+  - name: Clone a github repository
+    git:
+      repo: https://github.com/ivankuzminn/BASH-Ansible-Docker.git
+      dest: /root/BASH-Ansible-Docker/
+      clone: yes
+      update: yes
+      
+  - name: docker build
+    ansible.builtin.command:
+      cmd: docker-compose build
+      chdir: /root/BASH-Ansible-Docker/docker
+
+  - name: docker up
+    ansible.builtin.command:
+      cmd: docker-compose up -d
+      chdir: /root/BASH-Ansible-Docker/docker
+           
+  - name: tg notify
+    community.general.telegram:
+      token: 'xxxxx:xxxxxxxxxx'
+      api_args:
+       chat_id: xxxxxxxx
+       parse_mode: "markdown"
+       text: "Ansible task3(docker-compose) finished!"
+...

@@ -1,0 +1,129 @@
+---
+- hosts: server1
+  become: yes
+  vars_files:
+    - vars/main.yml
+
+  tasks:
+  - name: instal pckgs
+    apt: 
+      name: "{{ packages }}"
+    vars:
+      packages:
+      - apache2
+      - php
+      - python3-pymysql
+      - nginx
+      - php
+      - php-curl
+      - php-gd
+      - php-mbstring
+      - php-xml
+      - php-xmlrpc
+      - php-soap
+      - php-intl
+      - php-zip
+      - libapache2-mod-php
+      - php-mysql
+
+  - name: Download WP
+    ansible.builtin.get_url:
+      url: https://wordpress.org/latest.zip
+      dest: /tmp/latest.zip
+
+  - name: Unarchive WP
+    ansible.builtin.unarchive:
+      src: /tmp/latest.zip
+      dest: /var/www/
+      remote_src: true
+
+  - name: rm fldr
+    command: rm -R /var/www/html
+    
+  - name: rename fldr
+    command: mv /var/www/wordpress/ /var/www/html
+    
+  - name: Remove
+    ansible.builtin.file:
+      path: "{{ item }}"
+      state: absent
+    loop: 
+      - /etc/nginx/sites-avaliavle/default
+      - /etc/nginx/sites-enabled/default
+      - /etc/apache2/sites-available/000-default.conf      
+      - /etc/apache2/sites-enabled/000-default.conf 
+  
+  - name: download configs
+    ansible.builtin.get_url:
+       url: "{{ item.url }}"
+       dest: "{{ item.dest }}"
+    loop:
+        - { url: 'https://raw.githubusercontent.com/ivankuzminn/BASH-Ansible-Docker/main/BASH/ports.conf', dest: '/etc/apache2/ports.conf' }
+        - { url: 'https://raw.githubusercontent.com/ivankuzminn/BASH-Ansible-Docker/main/BASH/nginx-proxy.conf', dest: '/etc/nginx/sites-available/nginx-proxy.conf' }
+        - { url: 'https://raw.githubusercontent.com/ivankuzminn/BASH-Ansible-Docker/main/BASH/wordpress.conf', dest: '/etc/apache2/sites-available/wordpress.conf' }
+        - { url: 'https://raw.githubusercontent.com/ivankuzminn/BASH-Ansible-Docker/main/BASH/wp-config.php', dest: '/var/www/html/wp-config.php' }
+
+  - name: ln
+    command: ln -s /etc/nginx/sites-available/nginx-proxy.conf /etc/nginx/sites-enabled/
+    
+  - name: Change  owner&group for WP
+    ansible.builtin.file:
+      path: /var/www/html
+      owner: www-data
+      group: www-data
+      mode: '0755'
+          
+  - name: Install MariaDB
+    apt:
+      name: mariadb-server
+      state: present
+
+  - name: Ensure the MariaDB service is running
+    service:
+      name: mariadb
+      state: started
+      enabled: yes
+
+  - name: "Resetting RootPasswd"
+    mysql_user:
+      login_user: root
+      login_password: ''
+      name: root
+      host_all: yes
+      password: ''
+      login_unix_socket: /run/mysqld/mysqld.sock
+ 
+  - name: Create MariaDB database
+    mysql_db:
+      name: wordpress
+      login_unix_socket: /run/mysqld/mysqld.sock
+      state: present
+      
+  - name: Create MariaDB user
+    mysql_user:
+      name: wordpress
+      password: wordpress
+      state: present
+      priv: "wordpress.*:ALL"
+      login_unix_socket: /run/mysqld/mysqld.sock
+                 
+  - name: restart&enable srvcs
+    systemd:
+      name: "{{ item }}"
+      state: restarted
+      enabled: yes
+    with_items:
+    - apache2
+    - mysql
+    - nginx
+    
+  - name: tg notify
+    community.general.telegram:
+      token: '**************:************************'
+      api_args:
+       chat_id: 6458915673
+       parse_mode: "markdown"
+       text: "Ansible task finished!"
+       disable_web_page_preview: True
+       disable_notification: True
+...

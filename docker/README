@@ -1,0 +1,5 @@
+A script that can be used to easily install a PHP extension inside the official PHP Docker images.
+https://github.com/mlocati/docker-php-extension-installer
+------------
+OPcache improves PHP performance by storing precompiled script bytecode in shared memory, thereby removing the need for PHP to load and parse scripts on each request.
+https://www.php.net/manual/ru/book.opcache.php
